@@ -12,6 +12,8 @@
             // Get Elements
             this.bgColorElement = document.getElementById('bgColorElement');
             this.fgColorElement = document.getElementById('fgColorElement');
+            this.bgColorInput = document.getElementById('bgColorInput');
+            this.fgColorInput = document.getElementById('fgColorInput');
             this.pencilToolElement = document.getElementById('pencil-tool');
             this.lineToolElement = document.getElementById('line-tool');
 
@@ -31,16 +33,21 @@
                 this.setCurrentTool(Toolbox.PENCIL_TOOL);
             };
             this.bgColorElement.onclick = (event) => {
-                const newBackgroundColor = window.prompt("New Background Color Code ? ", this.currentBgColor);
+                this.bgColorInput.click();
+            };
+            this.bgColorInput.onchange = (event) => {
+                const newBackgroundColor = this.bgColorInput.value;
                 if(newBackgroundColor !== null){
                     const oldBgColor = this.currentBgColor;
                     this.setBackgroundColor(newBackgroundColor);
                     if(this.bgColorChangedHandler !== null && this.bgColorChangedHandler !== undefined) this.bgColorChangedHandler(newBackgroundColor, oldBgColor);
                 }
-
             };
             this.fgColorElement.onclick = (event) => {
-                const newForegroundColor = window.prompt("New Foreground Color Code ? ", this.currentFgColor);
+                this.fgColorInput.click();
+            };
+            this.fgColorInput.onchange = (event) => {
+                const newForegroundColor = this.fgColorInput.value;
                 if(newForegroundColor !== null) {
                     const oldFgColor = this.currentFgColor;
                     this.setForegroundColor(newForegroundColor);
@@ -188,7 +195,7 @@
                                     // reset pixel
                                     pixel.element.style.backgroundColor = myToolBox.currentFgColor;
                                 }else{ // We get two distinct points and we need to use DDA Algorithm to draw a line between these pixels
-                                    drawLineUsingDDA(pixelSpace, startPixel, pixel); // Start and End Pixels
+                                    drawLineUsingBresenham(pixelSpace, startPixel, pixel); // Start and End Pixels
                                 }
                                 startPixel = null; // Clear selected Pixels
                             }
@@ -272,6 +279,181 @@
             plotPixel(pixels, x, y);
             x = x + dX;
             y = y + dY;
+        }
+    }
+    function drawLineUsingBresenham(pixels, startPixel, endPixel){
+        let dX = endPixel.x - startPixel.x; // Calculate change in X
+        let dY = endPixel.y - startPixel.y; // Calculate change in Y
+        let slope = parseInt(dY/dX); // Calculate slope
+        console.log(`drawing line from (${startPixel.x}, ${startPixel.y} to (${endPixel.x}, ${endPixel.y}) with dX:${dX}, dY:${dY} and slope:${slope}`);
+        if(dX >= 0 && dY >= 0){ // Ist Quadrant Case
+            if(slope < 1){ // When either both X and Y have same rate of change or X rate of change is more than Y
+                let decisionParam = 2*dY - dX; // Initial decision parameter
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(x<=endPixel.x){ // Repeat until we reach beyond end coordinates
+                    pixels[x][y].plot();  // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevY = y;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x+1;
+                        y = y+1;
+                    }else{
+                        x = x+1; // Increment x only
+                    }
+                    // update decision parameter
+                    decisionParam = decisionParam + 2*dY - 2*dX * (y-prevY);
+                }
+            }else{ // When change in Y is more than change in X
+                let decisionParam = 2*dX-dY;
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(y<=endPixel.y){
+                    pixels[x][y].plot(); // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevX = x;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x+1;
+                        y = y+1;
+                    }else{
+                        // Increment Y only
+                        y = y+1;
+                    }
+                    // Update Decision Parameter
+                    decisionParam = decisionParam + 2*dX - 2*dY * (x-prevX);
+                }
+            }
+        }else if(dX < 0 && dY >= 0){ // IInd Quadrant case
+            dX = -dX;
+            if(slope > -1){ // When either both X and Y have same rate of change or X rate of change is more than Y
+                let decisionParam = 2*dY - dX; // Initial decision parameter
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(endPixel.x<=x){ // Repeat until we reach beyond end coordinates
+                    pixels[x][y].plot();  // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevY = y;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x-1;
+                        y = y+1;
+                    }else{
+                        x = x-1; // Increment x only
+                    }
+                    // update decision parameter
+                    decisionParam = decisionParam + 2*dY - 2*dX * (y-prevY);
+                }
+            }else{ // When change in Y is more than change in X
+                let decisionParam = 2*dX - dY;
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(y<=endPixel.y){
+                    pixels[x][y].plot(); // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevX = x;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x-1;
+                        y = y+1;
+                    }else{
+                        // Increment Y only
+                        y = y+1;
+                    }
+                    // Update Decision Parameter
+                    decisionParam = decisionParam + 2*dX - 2*dY * (prevX-x);
+                }
+            }
+        }else if(dX < 0 && dY < 0){
+            dX = -dX;
+            dY = -dY;
+            if(slope < 1){ // When either both X and Y have same rate of change or X rate of change is more than Y
+                let decisionParam = 2*dY - dX; // Initial decision parameter
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(endPixel.x<=x){ // Repeat until we reach beyond end coordinates
+                    pixels[x][y].plot();  // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevY = y;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x-1;
+                        y = y-1;
+                    }else{
+                        x = x-1; // Increment x only
+                    }
+                    // update decision parameter
+                    decisionParam = decisionParam + 2*dY - 2*dX * (prevY-y);
+                }
+            }else{ // When change in Y is more than change in X
+                let decisionParam = 2*dX - dY;
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(endPixel.y<=y){
+                    pixels[x][y].plot(); // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevX = x;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x-1;
+                        y = y-1;
+                    }else{
+                        // Increment Y only
+                        y = y-1;
+                    }
+                    // Update Decision Parameter
+                    decisionParam = decisionParam + 2*dX - 2*dY * (prevX-x);
+                }
+            }
+        }else if(dX >= 0 && dY < 0){
+            dY = -dY;
+            if(slope > -1){ // When either both X and Y have same rate of change or X rate of change is more than Y
+                let decisionParam = 2*dY - dX; // Initial decision parameter
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(x<=endPixel.x){ // Repeat until we reach beyond end coordinates
+                    pixels[x][y].plot();  // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevY = y;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x+1;
+                        y = y-1;
+                    }else{
+                        x = x+1; // Increment x only
+                    }
+                    // update decision parameter
+                    decisionParam = decisionParam + 2*dY - 2*dX * (prevY-y);
+                }
+            }else{ // When change in Y is more than change in X
+                let decisionParam = 2*dX - dY;
+                // Initial Coordinates
+                let x = startPixel.x;
+                let y = startPixel.y;
+                while(endPixel.y<=y){
+                    pixels[x][y].plot(); // Plot the point
+                    console.log("Plotting : ("+x+ ", " + y + ") and next decision parameter : " + decisionParam);
+                    const prevX = x;
+                    if(decisionParam >= 0){
+                        // Increment both coordinates
+                        x = x+1;
+                        y = y-1;
+                    }else{
+                        // Increment Y only
+                        y = y-1;
+                    }
+                    // Update Decision Parameter
+                    decisionParam = decisionParam + 2*dX - 2*dY * (x-prevX);
+                }
+            }
         }
     }
 
