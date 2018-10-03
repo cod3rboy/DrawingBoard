@@ -3,6 +3,7 @@
     class Toolbox{
         static get LINE_TOOL() {return 101};
         static get PENCIL_TOOL() {return 102};
+        static get CIRCLE_TOOL() {return 103};
         constructor(id){
             this.element = document.getElementById(id);
             if(this.element === null){
@@ -16,6 +17,7 @@
             this.fgColorInput = document.getElementById('fgColorInput');
             this.pencilToolElement = document.getElementById('pencil-tool');
             this.lineToolElement = document.getElementById('line-tool');
+            this.circleToolElement = document.getElementById('circle-tool');
 
             // Set initial state
             this.setBackgroundColor("#FFFFFF");
@@ -31,6 +33,9 @@
             };
             this.pencilToolElement.onclick = (event) => {
                 this.setCurrentTool(Toolbox.PENCIL_TOOL);
+            };
+            this.circleToolElement.onclick = (event) => {
+                this.setCurrentTool(Toolbox.CIRCLE_TOOL);
             };
             this.bgColorElement.onclick = (event) => {
                 this.bgColorInput.click();
@@ -75,7 +80,10 @@
                 case Toolbox.LINE_TOOL:
                     this.currentToolElement = this.lineToolElement;
                     this.currentTool = Toolbox.LINE_TOOL;
-
+                    break;
+                case Toolbox.CIRCLE_TOOL:
+                    this.currentToolElement = this.circleToolElement;
+                    this.currentTool = Toolbox.CIRCLE_TOOL;
             }
             this.currentToolElement.classList.add('activated');
             if(oldToolCode !== this.currentTool){ // When current tool change to different tool
@@ -184,18 +192,27 @@
                     tableCell.classList.add("pixel");
                     tableRow.appendChild(tableCell);
                     pixelSpace[i][j] = new Pixel(i, j, tableCell); // j(cols) for x-axis and i(rows) for y-axis
-                    if(myToolBox.currentTool === Toolbox.LINE_TOOL){
+                    if(myToolBox.currentTool === Toolbox.LINE_TOOL || myToolBox.currentTool === Toolbox.CIRCLE_TOOL){
                         // Register click event
                         pixelSpace[i][j].registerOnClickAction(function(event, pixel) {
                             if(startPixel === null) { // When no pixel on screen was clicked
                                 startPixel = pixel;
-                                pixel.element.style.backgroundColor = myToolBox.currentFgColor;
+                                pixel.setColor(myToolBox.currentFgColor);
                             }else{ // When 2nd pixel is clicked
                                 if(startPixel.x === pixel.x && startPixel.y === pixel.y){ // When start and end pixels are same
                                     // reset pixel
-                                    pixel.element.style.backgroundColor = myToolBox.currentFgColor;
+                                    pixel.setColor(myToolBox.currentBgColor);
                                 }else{ // We get two distinct points and we need to use DDA Algorithm to draw a line between these pixels
-                                    drawLineUsingBresenham(pixelSpace, startPixel, pixel); // Start and End Pixels
+                                    if(myToolBox.currentTool === Toolbox.LINE_TOOL) {
+                                        drawLineUsingBresenham(pixelSpace, startPixel, pixel); // Start and End Pixels
+                                    }else{
+                                        // Find Radius
+                                        const dX = pixel.x - startPixel.x;
+                                        const dY = pixel.y - startPixel.y;
+                                        const radius = Math.trunc(Math.sqrt(dX*dX + dY*dY));
+                                        drawCircle(pixelSpace, startPixel, radius);
+                                        startPixel.setColor(myToolBox.currentBgColor);
+                                    }
                                 }
                                 startPixel = null; // Clear selected Pixels
                             }
@@ -281,6 +298,13 @@
             y = y + dY;
         }
     }
+
+    /**
+     * Draws a line from startPixel to endPixel on pixels (Pixel Grid) using Bresenham's Line Drawing Algorithm
+     * @param pixels Pixel Grid array for Drawing
+     * @param startPixel pixel object to start drawing line from.
+     * @param endPixel pixel object representing line end point
+     */
     function drawLineUsingBresenham(pixels, startPixel, endPixel){
         let dX = endPixel.x - startPixel.x; // Calculate change in X
         let dY = endPixel.y - startPixel.y; // Calculate change in Y
@@ -458,6 +482,54 @@
     }
 
     /**
+     * Draws a circle on the Pixel Grid using Circle Mid Point Algorithm
+     * @param pixels Pixel Grid array for Drawing
+     * @param centerPixel Center of the circle
+     * @param radius  Radius of the circle
+     */
+    function drawCircle(pixels, centerPixel, radius){
+        // Create circle relative to origin (0,0)
+        let x = 0; // Initial x-coordinate
+        let y = radius; // Initial y-coordinate
+        let decisionParam = 1 - radius; // Initial Decision Parameter
+        console.log(`Drawing circle at center: (${centerPixel.x}, ${centerPixel.y}) with radius:${radius} and initial decision parameter:${decisionParam}`);
+        // Array to store set of points along the circle path
+        let circlePoints = [];
+        while(x <= y){ // Get all points lies on the edge of upper octant in Ist Quadrant (where y-coordinate value >= x-coordinate value)
+            console.log(`Current Pixel : (${x}, ${y}) and Decision Parameter : ${decisionParam}`);
+            circlePoints.push({x: x, y: y}); // Push coordinates to set of circle points
+            const prevY = y; // Save current y
+            const prevX = x; // Save current x
+            // Get next point using current decision parameter
+            if(decisionParam>=0){
+                x = x+1;
+                y = y-1;
+            }else{
+                x = x+1;
+            }
+            // Update decision parameter
+            decisionParam = decisionParam + 2*(prevX+1) + ((y*y)-(prevY*prevY)) - (y-prevY) + 1;
+        }
+        // plot all points stored in circlePoints and rest of the points using circle symmetry
+        circlePoints.forEach((pixel) => {
+            // Plot circle points relative to the centerPixel coordinates
+            // Note: circlePoints have points relative to origin so we just need to add them to or subtract them from (based on symmetry)
+            // centerPixel coordinates to get actual points to plot.
+            const pixelX = pixel.x + centerPixel.x;
+            const pixelY = pixel.y + centerPixel.y;
+            plotPixel(pixels, pixelX, pixelY);
+            plotPixel(pixels, centerPixel.x-pixel.x, centerPixel.y-pixel.y);
+            plotPixel(pixels, centerPixel.x+pixel.x, centerPixel.y-pixel.y);
+            plotPixel(pixels, centerPixel.x-pixel.x, centerPixel.y+pixel.y);
+
+            plotPixel(pixels, centerPixel.x+pixel.y, centerPixel.y+pixel.x);
+            plotPixel(pixels, centerPixel.x-pixel.y, centerPixel.y-pixel.x);
+            plotPixel(pixels, centerPixel.x+pixel.y, centerPixel.y-pixel.x);
+            plotPixel(pixels, centerPixel.x-pixel.y, centerPixel.y+pixel.x);
+        });
+    }
+
+    /**
      *
      * @param pixels PixelSpace containing Pixel objects for all the pixels of the screen
      * @param x x-coordinate of pixel to be drawn
@@ -466,7 +538,9 @@
     function plotPixel(pixels, x, y){
         x = parseInt(x);
         y = parseInt(y);
-        pixels[x][y].plot();
+        // Only draw pixel if it is within boundaries of pixel grid (to handle circle pixels computed outside grid)
+        if(x>=0 && x<pixels.length && y>=0 && y<pixels[0].length)
+            pixels[x][y].plot();
         console.log(`Plotted pixel : (${x}, ${y})`);
     }
 })();
