@@ -4,6 +4,7 @@
         static get LINE_TOOL() {return 101};
         static get PENCIL_TOOL() {return 102};
         static get CIRCLE_TOOL() {return 103};
+        static get ERASER_TOOL() {return 104;}
         constructor(id){
             this.element = document.getElementById(id);
             if(this.element === null){
@@ -18,6 +19,7 @@
             this.pencilToolElement = document.getElementById('pencil-tool');
             this.lineToolElement = document.getElementById('line-tool');
             this.circleToolElement = document.getElementById('circle-tool');
+            this.eraserToolElement = document.getElementById('eraser-tool');
             // Set initial state
             this.setBackgroundColor("#FFFFFF");
             this.setForegroundColor("#000000");
@@ -35,6 +37,9 @@
             };
             this.circleToolElement.onclick = (event) => {
                 this.setCurrentTool(Toolbox.CIRCLE_TOOL);
+            };
+            this.eraserToolElement.onclick = (event) => {
+                this.setCurrentTool(Toolbox.ERASER_TOOL);
             };
             this.bgColorElement.onclick = (event) => {
                 this.bgColorInput.click();
@@ -83,6 +88,10 @@
                 case Toolbox.CIRCLE_TOOL:
                     this.currentToolElement = this.circleToolElement;
                     this.currentTool = Toolbox.CIRCLE_TOOL;
+                    break;
+                case Toolbox.ERASER_TOOL:
+                    this.currentToolElement = this.eraserToolElement;
+                    this.currentTool = Toolbox.ERASER_TOOL;
             }
             this.currentToolElement.classList.add('activated');
             if(oldToolCode !== this.currentTool){ // When current tool change to different tool
@@ -121,12 +130,13 @@
         const width = parseInt(canvasWidthElement.value);
         const height = parseInt(canvasHeightElement.value);
         const pixelSize = parseInt(pixelSizeElement.value)/10; // starts from 0.0 to 0.xx (in em)
+        const showPixelBorder = showBorderBox.checked;
         console.log(`Creating canvas of size ${width}(w) x ${height}(h) with pixel size:${pixelSize}`);
         canvasHeightElement.value = "";
         canvasWidthElement.value = "";
         pixelSizeElement.value = "";
         showBorderBox.checked = false;
-        makeCanvas(pixelSpace, body, height, width, pixelSize, showBorderBox.checked);
+        makeCanvas(pixelSpace, body, height, width, pixelSize, showPixelBorder);
     };
     clearCanvasButton.onclick = function(event){
         // Redraw the canvas with saved dimensions to clear the drawing
@@ -200,7 +210,7 @@
                     tableCell.classList.add("cell");
                     tableCell.style.width = pixelSize.toString() + "em"; // Set pixel width
                     tableCell.style.height = pixelSize.toString() + "em"; // Set pixel height
-                    if(showBorderFlag) tableCell.style.border = "0.5px solid #cccccc";
+                    if(showBorderFlag === true) tableCell.style.border = "0.5px solid #cccccc";
                     tableRow.appendChild(tableCell);
                     pixelSpace[i][j] = new Pixel(i, j, tableCell); // j(cols) for x-axis and i(rows) for y-axis
                     if(myToolBox.currentTool === Toolbox.LINE_TOOL || myToolBox.currentTool === Toolbox.CIRCLE_TOOL){
@@ -228,10 +238,13 @@
                                 startPixel = null; // Clear selected Pixels
                             }
                         });
-                    }else if(myToolBox.currentTool === Toolbox.PENCIL_TOOL) {
+                    }else if(myToolBox.currentTool === Toolbox.PENCIL_TOOL || myToolBox.currentTool === Toolbox.ERASER_TOOL) {
                         pixelSpace[i][j].registerOnHoverAction(function (event, pixel) {
                             if(pixelPressed === true){
-                                pixel.setColor(myToolBox.currentFgColor);
+                                if(myToolBox.currentTool === Toolbox.PENCIL_TOOL)
+                                    pixel.setColor(myToolBox.currentFgColor);
+                                else if(myToolBox.currentTool === Toolbox.ERASER_TOOL)
+                                    pixel.setColor(myToolBox.currentBgColor);
                             }
                         });
                     }
