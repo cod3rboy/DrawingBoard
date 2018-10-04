@@ -18,7 +18,6 @@
             this.pencilToolElement = document.getElementById('pencil-tool');
             this.lineToolElement = document.getElementById('line-tool');
             this.circleToolElement = document.getElementById('circle-tool');
-
             // Set initial state
             this.setBackgroundColor("#FFFFFF");
             this.setForegroundColor("#000000");
@@ -106,26 +105,32 @@
     let pixelPressed = false;
     let canvasWidth = 0; // Current width of canvas
     let canvasHeight = 0; // Current height of canvas
+    let canvasPixelSize = 0; // Current pixel size of canvas
+    let showBorder = false;
     // Get element references
     const canvasWidthElement = document.getElementById('canvasWidthBox');
     const canvasHeightElement = document.getElementById('canvasHeightBox');
+    const pixelSizeElement = document.getElementById('pixelSizeBox');
+    const showBorderBox = document.getElementById('showBorderBox');
     const createCanvasButton = document.getElementById('createCanvasBtn');
     const clearCanvasButton = document.getElementById('clearCanvasBtn');
-
     // Create Toolbox
     const myToolBox = new Toolbox('myToolBox');
     // Register click listeners
     createCanvasButton.onclick = function(event){
         const width = parseInt(canvasWidthElement.value);
         const height = parseInt(canvasHeightElement.value);
-        console.log(`Creating canvas of size ${width}(w) x ${height}(h)`);
+        const pixelSize = parseInt(pixelSizeElement.value)/10; // starts from 0.0 to 0.xx (in em)
+        console.log(`Creating canvas of size ${width}(w) x ${height}(h) with pixel size:${pixelSize}`);
         canvasHeightElement.value = "";
         canvasWidthElement.value = "";
-        makeCanvas(pixelSpace, body, height, width);
+        pixelSizeElement.value = "";
+        showBorderBox.checked = false;
+        makeCanvas(pixelSpace, body, height, width, pixelSize, showBorderBox.checked);
     };
     clearCanvasButton.onclick = function(event){
         // Redraw the canvas with saved dimensions to clear the drawing
-        makeCanvas(pixelSpace, body, canvasHeight, canvasWidth);
+        makeCanvas(pixelSpace, body, canvasHeight, canvasWidth, canvasPixelSize, showBorder);
     };
     myToolBox.onBgColorChanged(updateCanvasBgColor);
     myToolBox.onFgColorChanged(updateCanvasFgColor);
@@ -162,10 +167,12 @@
         }
     }
 
-    function makeCanvas(pixelMap, canvasElement, height, width){
-        // Clear saved canvas width and height
+    function makeCanvas(pixelMap, canvasElement, height, width, pixelSize, showBorderFlag){
+        // Clear saved canvas width and height and pixelsize
         canvasWidth = 0;
         canvasHeight = 0;
+        canvasPixelSize = 0;
+        showBorder = false;
         // Clear the currently saved start Pixel if any
         startPixel = null;
         // Clear the CanvasElement HTML to No Canvas message
@@ -180,16 +187,20 @@
             // Clear HTML first
             canvasElement.innerHTML = "";
             // Making canvas
-            const table = document.createElement("table");
+            const table = document.createElement("div");
+            table.classList.add("table");
             canvasElement.insertAdjacentElement('afterbegin', table);
             for(let i=0; i<height; i++){
                 pixelSpace[i] = [];
-                const tableRow = document.createElement("tr");
+                const tableRow = document.createElement("div");
                 tableRow.classList.add("row");
                 table.insertAdjacentElement('afterbegin', tableRow);
                 for(let j=0; j<width; j++){
-                    const tableCell = document.createElement("td");
-                    tableCell.classList.add("pixel");
+                    const tableCell = document.createElement("div");
+                    tableCell.classList.add("cell");
+                    tableCell.style.width = pixelSize.toString() + "em"; // Set pixel width
+                    tableCell.style.height = pixelSize.toString() + "em"; // Set pixel height
+                    if(showBorderFlag) tableCell.style.border = "0.5px solid #cccccc";
                     tableRow.appendChild(tableCell);
                     pixelSpace[i][j] = new Pixel(i, j, tableCell); // j(cols) for x-axis and i(rows) for y-axis
                     if(myToolBox.currentTool === Toolbox.LINE_TOOL || myToolBox.currentTool === Toolbox.CIRCLE_TOOL){
@@ -239,6 +250,8 @@
         // Save current width and height of canvas
         canvasWidth = width;
         canvasHeight = height;
+        canvasPixelSize = pixelSize;
+        showBorder = showBorderFlag;
     }
     function updateCanvasBgColor(newBgColor, oldBgColor){
         console.log("Updating Background color from " + oldBgColor + " to " + newBgColor);
@@ -266,7 +279,7 @@
             });
         });
         // Regenerate canvas along with registering events on the basis of selected tool
-        makeCanvas(pixelSpace, body, canvasHeight, canvasWidth);
+        makeCanvas(pixelSpace, body, canvasHeight, canvasWidth, canvasPixelSize, showBorder);
         // Load the saved color map into canvas
         pixelSpace.forEach((pixelRow, x) => {
             pixelRow.forEach((pixel, y) =>{
